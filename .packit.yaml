@@ -1,0 +1,8 @@
+jobs:
+- job: tests
+  trigger: pull_request
+  tmt_plan: openssl
+  targets:
+  - fedora-37-x86_64
+  fmf_url: https://gitlab.com/redhat-crypto/tests/interop.git
+
