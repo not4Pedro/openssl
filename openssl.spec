@@ -152,18 +152,8 @@ RPM_OPT_FLAGS="$RPM_OPT_FLAGS -Wa,--noexecstack -Wa,--generate-missing-build-not
 
 export HASHBANGPERL=/usr/bin/perl
 
-# ia64, x86_64, ppc are OK by default
-# Configure the build tree.  Override OpenSSL defaults with known-good defaults
-# usable on all platforms.  The Configure script already knows to use -fPIC and
-# RPM_OPT_FLAGS, so we can skip specifiying them here.
-./Configure \
-	--prefix=%{_prefix} --openssldir=%{_sysconfdir}/pki/tls ${sslflags} \
-	--system-ciphers-file=%{_sysconfdir}/crypto-policies/back-ends/openssl.config \
-	zlib enable-camellia enable-seed enable-rfc3779 enable-sctp \
-	enable-cms enable-md2 enable-rc5 ${ktlsopt} enable-fips\
-	no-mdc2 no-ec2m no-sm2 no-sm4 \
-	shared  ${sslarch} $RPM_OPT_FLAGS '-DDEVRANDOM="\"/dev/urandom\""'
-
+make
+make test
 
 
 %changelog
