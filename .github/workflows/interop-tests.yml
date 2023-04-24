@@ -61,7 +61,11 @@ jobs:
               echo 'RUN dnf -y update'
               echo 'RUN dnf -y install git tmt-all'
               echo 'RUN git clone -b interop-tests --recurse-submodules https://github.com/not4pedro/openssl.git'
+              echo 'WORKDIR /openssl/'
+              echo 'RUN make -s -j4'
+              echo 'RUN make test HARNESS_JOBS=${HARNESS_JOBS:-4}'
               echo 'WORKDIR /openssl/interop/'
+
           } > podmanfile
           podman build  --build-arg COMPONENT --build-arg TYPE --build-arg SLICES --build-arg SLICEID --tag fedoralatest -f ./podmanfile
       - name : Run tests
