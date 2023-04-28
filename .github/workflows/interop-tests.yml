@@ -6,30 +6,19 @@ jobs:
     continue-on-error: true
     timeout-minutes: 90
     strategy:
-      fail-fast: false # Setting fail-fast to false prevents GitHub from cancelling all in-progress jobs if any matrix job fails.
+      fail-fast: false
       matrix:
         include:
           - COMPONENT: gnutls
             TYPE: other
-            SLICEID: 0
-            SLICES: 1
           - COMPONENT: gnutls
             TYPE: 2way
-            SLICEID: 0
-            SLICES: 1
           - COMPONENT: gnutls
             TYPE: 3way
-            SLICEID: 0
-            SLICES: 1
           - COMPONENT: gnutls
             TYPE: basic
-            SLICEID: 0
-            SLICES: 1
           - COMPONENT: nss
             TYPE: 2way
-            SLICEID: 0
-            # SLICEID: [0, 1]
-            SLICES: 1
     env:
       COMPONENT: ${{ matrix.COMPONENT }}
       TYPE: ${{ matrix.TYPE }}
@@ -42,38 +31,34 @@ jobs:
           sudo apt update
           sudo apt-get -y install podman
           podman pull registry.fedoraproject.org/fedora:latest
-      # - name: Get source
-      #   uses: actions/checkout@v3
-      #   with:
-      #     submodules: true
       - name: Create container
         run: |
           {
               echo 'FROM fedora:latest'
               echo 'ARG COMPONENT'
               echo 'ARG TYPE'
-              echo 'ARG SLICES'
-              echo 'ARG SLICEID'
               echo 'ENV COMPONENT $COMPONENT'
               echo 'ENV TYPE $TYPE'
-              echo 'ENV SLICES $SLICES'
-              echo 'ENV SLICEID $SLICEID'              
               echo 'RUN dnf -y update'
+              echo 'RUN dnf -y install perl'
               echo 'RUN dnf -y install git tmt-all'
+              echo 'RUN dnf -y remove openssl'
+              echo 'RUN echo "alias openssl='/openssl/util/wrap.pl /openssl/apps/openssl'" >> ~/.bashrc && source ~/.bashrc'
               echo 'RUN git clone -b interop-tests --recurse-submodules https://github.com/not4pedro/openssl.git'
               echo 'WORKDIR /openssl/'
+              echo 'RUN ./config --banner=Configured no-asm no-makedepend enable-buildtest-c++ enable-fips --strict-warnings -D_DEFAULT_SOURCE && perl configdata.pm --dump'
               echo 'RUN make -s -j4'
-              echo 'RUN make test HARNESS_JOBS=${HARNESS_JOBS:-4}'
               echo 'WORKDIR /openssl/interop/'
 
           } > podmanfile
           podman build  --build-arg COMPONENT --build-arg TYPE --build-arg SLICES --build-arg SLICEID --tag fedoralatest -f ./podmanfile
       - name : Run tests
+      # inspired by GnuTLS configuration: https://gitlab.com/gnutls/gnutls/-/blob/master/.gitlab-ci.yml#L322
         run: |
           podman run -di --name fedoralatest fedoralatest:latest
           echo "Tests to run:"
           podman exec -i fedoralatest tmt run plans -n interop tests -f "tag:interop-openssl" -f "tag:interop-$TYPE" -f "tag:interop-$COMPONENT"  discover -v
-          echo "Slicing SLICE_TOTAL=$SLICES SLICE_ID=$SLICEID"
           echo "Run the tests:"
-          podman exec -i fedoralatest tmt run -a -e "SLICE_TOTAL=$SLICES" -e "SLICE_ID=$SLICEID" plans -n interop tests -f "tag:interop-openssl" -f "tag:interop-$TYPE" -f "tag:interop-$COMPONENT" provision -h local execute -h tmt --interactive
-          sleep 1
+          podman exec -i fedoralatest tmt run -a plans -n interop tests -f "tag:interop-openssl" -f "tag:interop-$TYPE" -f "tag:interop-$COMPONENT" provision -h local execute -h tmt --interactive
+          # Command to prevent truncation of the output
+          echo 'Finished' 
