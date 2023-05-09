@@ -10,13 +10,9 @@ jobs:
       matrix:
         include:
           - COMPONENT: gnutls
-            TYPE: other
-          - COMPONENT: gnutls
-            TYPE: 2way
+            TYPE: "other,basic,2way"
           - COMPONENT: gnutls
             TYPE: 3way
-          - COMPONENT: gnutls
-            TYPE: basic
           - COMPONENT: nss
             TYPE: 2way
     env:
@@ -49,6 +45,12 @@ jobs:
               echo 'RUN ./config --banner=Configured no-asm no-makedepend enable-buildtest-c++ enable-fips --strict-warnings -D_DEFAULT_SOURCE && perl configdata.pm --dump'
               echo 'RUN make -s -j4'
               echo 'WORKDIR /openssl/interop/'
+              echo 'RUN cat <<'EOF' >> setup.sh
+                        IFS=',' read -ra ADDR <<< "$TYPE"
+                        for i in "${ADDR[@]}"; do
+                        echo "$i"
+                        done
+                        EOF'
 
           } > podmanfile
           podman build  --build-arg COMPONENT --build-arg TYPE --build-arg SLICES --build-arg SLICEID --tag fedoralatest -f ./podmanfile
